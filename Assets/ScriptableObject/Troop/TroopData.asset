@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d7da2eadbac40741bed6733e0e185ac, type: 3}
+  m_Name: TroopData
+  m_EditorClassIdentifier: 
+  troopID: 0
+  unitName: Soldier
+  visualPrefab: {fileID: 5874289072597554343, guid: b21fd0ed88438024bb61711a10184743,
+    type: 3}
+  maxHealth: 10
+  attackPower: 1
+  attackRange: 1
+  moveSpeed: 5
+  level: 1

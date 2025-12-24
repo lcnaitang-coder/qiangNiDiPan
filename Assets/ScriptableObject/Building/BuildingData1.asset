@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 63627f83baddd2a4fa4b5fe85c678341, type: 3}
+  m_Name: BuildingData1
+  m_EditorClassIdentifier: 
+  levels:
+  - maxCapacity: 10
+    productionRate: 1
+    visualModelPrefab: {fileID: 7277049448366862782, guid: f6aa5b9aa40ca5e47b5d2ebc3d66393f,
+      type: 3}
+  - maxCapacity: 20
+    productionRate: 1
+    visualModelPrefab: {fileID: 7277049448366862782, guid: d0bfce3a3687ffc43811a6cbad6e3380,
+      type: 3}
+  - maxCapacity: 30
+    productionRate: 1
+    visualModelPrefab: {fileID: 7277049448366862782, guid: 3293633d307208f4bac02ca7e2c5c748,
+      type: 3}
+  - maxCapacity: 40
+    productionRate: 1
+    visualModelPrefab: {fileID: 7277049448366862782, guid: 1cccbe6963316d14c9cda92aac41e486,
+      type: 3}
+  - maxCapacity: 50
+    productionRate: 1
+    visualModelPrefab: {fileID: 7277049448366862782, guid: caf25b479cf12d548bf10721628ea52f,
+      type: 3}
+  troopData: {fileID: 11400000, guid: 9ae92479860d4b74cbbafb8ac49b8965, type: 2}
