@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6419f70ff7be7d241b92307f5ec48ac9, type: 3}
+  m_Name: ForestPathProfile
+  m_EditorClassIdentifier: 
+  defaultGrassPrefab: {fileID: 3540762897780872220, guid: 4535039913bf16048a7a17ffd5026157,
+    type: 3}
+  defaultPathPrefab: {fileID: 7966126636889528199, guid: 0672a3a8ab14a7347bcdfb48b5b40663,
+    type: 3}
+  tileDefinitions:
+  - name: end
+    prefab: {fileID: 6893538221230236600, guid: 516580da5f2fdc04f85613453f847040,
+      type: 3}
+    canonicalMask: 1
+  - name: sharp_turn
+    prefab: {fileID: 1909047948225462713, guid: 21afe9cf1b0e31c48bce80d8468f1722,
+      type: 3}
+    canonicalMask: 3
+  - name: wide_turn
+    prefab: {fileID: 1322822106181277265, guid: bce82fb3e1ae8a843838d3aef2e333d3,
+      type: 3}
+    canonicalMask: 5
+  - name: straight
+    prefab: {fileID: 7966126636889528199, guid: 0672a3a8ab14a7347bcdfb48b5b40663,
+      type: 3}
+    canonicalMask: 9
+  - name: bird_fork
+    prefab: {fileID: 6229106650624831293, guid: de57a254ff3516144af288cff0595101,
+      type: 3}
+    canonicalMask: 11
+  - name: psi_j
+    prefab: {fileID: 5717039938286408964, guid: c4a494f7ddf29bd46b3cb331d9189bd3,
+      type: 3}
+    canonicalMask: 23
+  - name: k_junction
+    prefab: {fileID: 6140200085859973083, guid: b354a0b51699cef40a0e98af2f494b81,
+      type: 3}
+    canonicalMask: 15
+  - name: Y
+    prefab: {fileID: 4811905724834305173, guid: 786e14e87063db44dafd2a20a39cdee6,
+      type: 3}
+    canonicalMask: 21
+  - name: X
+    prefab: {fileID: 8645205743046824890, guid: d0987efa0f19d9e49b7f53883f69c656,
+      type: 3}
+    canonicalMask: 27
+  - name: 5-Way
+    prefab: {fileID: 3636881961851514654, guid: 591f607555154ed4b99faf3a434d163b,
+      type: 3}
+    canonicalMask: 31
+  - name: star
+    prefab: {fileID: 3519373716299492232, guid: 528333ca186f5a740a314914f4df8cda,
+      type: 3}
+    canonicalMask: 63
+  - name: grass
+    prefab: {fileID: 3540762897780872220, guid: 4535039913bf16048a7a17ffd5026157,
+      type: 3}
+    canonicalMask: 0
+  - name: Asy_Y
+    prefab: {fileID: 5595837770533734310, guid: 52e384840b5681d4286d9bcb6d791f5d,
+      type: 3}
+    canonicalMask: 19
+  - name: Fan
+    prefab: {fileID: 1445891516430738271, guid: e6ce8a1b33a953b4baf9f2c295072891,
+      type: 3}
+    canonicalMask: 7

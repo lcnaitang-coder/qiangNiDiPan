@@ -108,8 +108,9 @@ public class BuildingUI : MonoBehaviour {
         if (_targetBuilding == null) return;
         Debug.Log($"请求升级建筑: {_targetBuilding.name}");
         
-        // 调用 ServerRpc 进行升级
-        // 注意：Building 的 TryUpgradeServerRpc 验证了 ownership，这里安全调用
-        _targetBuilding.TryUpgradeServerRpc(NetworkManager.Singleton.LocalClientId);
+        // 委托给 GameCommandManager
+        if (GameCommandManager.Singleton != null) {
+            GameCommandManager.Singleton.RequestUpgradeBuilding(_targetBuilding.NetworkObjectId);
+        }
     }
 }

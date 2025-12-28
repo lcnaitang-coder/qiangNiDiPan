@@ -1,6 +1,31 @@
 using UnityEngine;
 using Unity.Netcode;
-using System.Collections;
+using Unity.Collections;
+using System.Collections.Generic;
+
+/// <summary>
+/// 玩家加载状态结构体
+/// </summary>
+public struct PlayerLoadState : INetworkSerializable, System.IEquatable<PlayerLoadState> {
+    public ulong ClientId;
+    public FixedString64Bytes PlayerName;
+    public ulong SteamId;
+    public bool IsFinished;
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter {
+        serializer.SerializeValue(ref ClientId);
+        serializer.SerializeValue(ref PlayerName);
+        serializer.SerializeValue(ref SteamId);
+        serializer.SerializeValue(ref IsFinished);
+    }
+
+    public bool Equals(PlayerLoadState other) {
+        return ClientId == other.ClientId && 
+               PlayerName == other.PlayerName && 
+               SteamId == other.SteamId && 
+               IsFinished == other.IsFinished;
+    }
+}
 
 /// <summary>
 /// 游戏流程管理器
@@ -13,6 +38,10 @@ public class GameFlowManager : NetworkBehaviour {
     [SerializeField] private string gameSceneName = "GameScene";
     [SerializeField] private GameObject rtsPlayerPrefab; // 真正的 RTS 玩家控制器 Prefab
 
+    // 状态同步
+    public NetworkList<PlayerLoadState> PlayerLoadStates;
+    public NetworkVariable<bool> IsGameStarted = new NetworkVariable<bool>(false);
+
     // 单例模式
     public static GameFlowManager Singleton { get; private set; }
 
@@ -23,6 +52,9 @@ public class GameFlowManager : NetworkBehaviour {
         }
         Singleton = this;
         DontDestroyOnLoad(gameObject);
+        
+        // 初始化 NetworkList
+        PlayerLoadStates = new NetworkList<PlayerLoadState>();
     }
 
     /// <summary>
@@ -32,31 +64,62 @@ public class GameFlowManager : NetworkBehaviour {
         if (!IsServer) return;
 
         // 1. 检查所有玩家是否准备好 (双重保险)
-        LobbyPlayerState[] players = FindObjectsOfType<LobbyPlayerState>();
-        foreach (var p in players) {
+        LobbyPlayerState[] lobbyPlayers = FindObjectsOfType<LobbyPlayerState>();
+        foreach (var p in lobbyPlayers) {
             if (!p.IsReady.Value) {
                 Debug.LogWarning("[GameFlowManager] Cannot start game, not all players are ready.");
                 return;
             }
         }
 
-        // 2. 切换场景
-        NetworkManager.Singleton.SceneManager.LoadScene(gameSceneName, UnityEngine.SceneManagement.LoadSceneMode.Single);
+        // 2. 初始化状态列表
+        PlayerLoadStates.Clear();
+        foreach (var p in lobbyPlayers) {
+            PlayerLoadStates.Add(new PlayerLoadState {
+                ClientId = p.ClientId,
+                PlayerName = p.PlayerName.Value,
+                SteamId = p.SteamId.Value,
+                IsFinished = false
+            });
+        }
         
-        // 3. 监听场景加载完成，以便生成 RTS 角色
+        IsGameStarted.Value = false;
+
+        // 3. 订阅事件
+        NetworkManager.Singleton.SceneManager.OnLoadComplete += OnClientLoadedScene;
         NetworkManager.Singleton.SceneManager.OnLoadEventCompleted += OnLoadEventCompleted;
+
+        // 4. 切换场景
+        NetworkManager.Singleton.SceneManager.LoadScene(gameSceneName, UnityEngine.SceneManagement.LoadSceneMode.Single);
+    }
+
+    private void OnClientLoadedScene(ulong clientId, string sceneName, UnityEngine.SceneManagement.LoadSceneMode loadSceneMode) {
+        if (sceneName == gameSceneName) {
+            // 更新对应玩家的状态
+            for (int i = 0; i < PlayerLoadStates.Count; i++) {
+                if (PlayerLoadStates[i].ClientId == clientId) {
+                    var state = PlayerLoadStates[i];
+                    state.IsFinished = true;
+                    PlayerLoadStates[i] = state; // 写回 NetworkList
+                    break;
+                }
+            }
+            Debug.Log($"[GameFlowManager] Client {clientId} loaded {sceneName}.");
+        }
     }
 
     private void OnLoadEventCompleted(string sceneName, UnityEngine.SceneManagement.LoadSceneMode loadSceneMode, System.Collections.Generic.List<ulong> clientsCompleted, System.Collections.Generic.List<ulong> clientsTimedOut) {
         if (sceneName == gameSceneName) {
-            Debug.Log("[GameFlowManager] Game Scene Loaded. Spawning RTS Controllers...");
+            Debug.Log("[GameFlowManager] All Clients Loaded. Starting Game...");
             
             // 只有服务器负责生成
             if (IsServer) {
                 SpawnRTSPlayers();
+                IsGameStarted.Value = true;
             }
             
             // 取消订阅
+            NetworkManager.Singleton.SceneManager.OnLoadComplete -= OnClientLoadedScene;
             NetworkManager.Singleton.SceneManager.OnLoadEventCompleted -= OnLoadEventCompleted;
         }
     }

@@ -106,15 +106,9 @@ public class Building : NetworkBehaviour {
         }
     }
 
-    // --- 后续预留：升级功能的接口 ---
-    [ServerRpc(RequireOwnership = false)]
-    public void TryUpgradeServerRpc(ulong requestPlayerId) {
-        // 1. 只有该建筑的主人才能升级
-        if (ownerId.Value != requestPlayerId) {
-            Debug.LogWarning($"[Building] 升级失败：玩家 {requestPlayerId} 不是建筑 {name} 的所有者。");
-            return;
-        }
-
+    // --- Upgrade Logic called by GameCommandManager ---
+    public void Upgrade() {
+        if (!IsServer) return;
         if (data == null) return;
 
         // 2. 检查是否已达最高级

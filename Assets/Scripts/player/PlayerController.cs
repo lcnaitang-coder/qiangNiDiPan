@@ -142,12 +142,14 @@ public class PlayerController : NetworkBehaviour {
             // Ctrl 键未按下：检查是否为“增援”操作
             // 如果当前有选中建筑，且点击的新建筑不在选中列表中 -> 视为向该建筑输送兵力
             if (_selectedBuildings.Count > 0 && !_selectedBuildings.Contains(building)) {
-                // 执行增援逻辑 (Reinforce)
+                // 执行增援逻辑 (Reinforce) -> 委托给 GameCommandManager
                 var sources = new System.Collections.Generic.List<Building>(_selectedBuildings);
                 
                 foreach (var source in sources) {
                     if (source != null && source != building) {
-                        SendTroopsServerRpc(source.NetworkObjectId, building.NetworkObjectId);
+                        if (GameCommandManager.Singleton != null) {
+                            GameCommandManager.Singleton.RequestSendTroops(source.NetworkObjectId, building.NetworkObjectId);
+                        }
                     }
                 }
                 
@@ -163,16 +165,16 @@ public class PlayerController : NetworkBehaviour {
 
     private void HandleHostileInteraction(Building targetBuilding) {
         // 让所有已选中的己方建筑向目标发兵
-        // 使用副本遍历，防止RPC可能导致的集合修改（虽然目前逻辑不会，但安全第一）
         var sources = new System.Collections.Generic.List<Building>(_selectedBuildings);
         
         foreach (var source in sources) {
             if (source != null && source != targetBuilding) {
-                SendTroopsServerRpc(source.NetworkObjectId, targetBuilding.NetworkObjectId);
+                if (GameCommandManager.Singleton != null) {
+                    GameCommandManager.Singleton.RequestSendTroops(source.NetworkObjectId, targetBuilding.NetworkObjectId);
+                }
             }
         }
         
-        // 按照需求：发兵结束后清空选择
         DeselectAll();
     }
 
@@ -202,71 +204,5 @@ public class PlayerController : NetworkBehaviour {
             }
         }
         _selectedBuildings.Clear();
-    }
-
-    // --- 服务器逻辑部分 ---
-
-    [ServerRpc]
-    private void SendTroopsServerRpc(ulong fromId, ulong toId) {
-        // 1. 获取服务器端的物体实例
-        if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(fromId, out NetworkObject fromObj) &&
-            NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(toId, out NetworkObject toObj)) {
-            
-            Building sourceBuilding = fromObj.GetComponent<Building>();
-
-            // 2. 验证权限与兵力
-            if (sourceBuilding != null && sourceBuilding.ownerId.Value == OwnerClientId) {
-                int totalToSpawn = sourceBuilding.currentSoldiers.Value / 2;
-                
-                if (totalToSpawn > 0) {
-                    // 3. 立即扣除总兵力
-                    sourceBuilding.currentSoldiers.Value -= totalToSpawn;
-
-                    // 4. 获取兵种数据
-                    TroopData troopData = null;
-                    if (sourceBuilding.data != null && sourceBuilding.data.troopData != null) {
-                        troopData = sourceBuilding.data.troopData;
-                    } else {
-                        Debug.LogError("[PlayerController] 建筑没有配置兵种数据！");
-                        return;
-                    }
-
-                    // 5. 开启协程分批出兵
-                    StartCoroutine(SpawnTroopsRoutine(sourceBuilding.transform.position, toId, OwnerClientId, totalToSpawn, troopData));
-                }
-            }
-        }
-    }
-
-    private IEnumerator SpawnTroopsRoutine(Vector3 startPos, ulong targetId, ulong ownerId, int totalCount, TroopData data) {
-        int spawnedCount = 0;
-        int batchSize = 5; // 每波出多少个兵
-
-        while (spawnedCount < totalCount) {
-            int currentBatch = Mathf.Min(batchSize, totalCount - spawnedCount);
-            
-            // Spawn Troop Instance
-            if (defaultTroopHostPrefab != null) {
-                // 使用对象池获取实例
-                NetworkObject troopNetObj = NetworkObjectPool.Singleton.GetNetworkObject(defaultTroopHostPrefab, startPos, Quaternion.identity);
-                
-                if (troopNetObj != null) {
-                    troopNetObj.Spawn(true);
-
-                    // Initialize Troop
-                    Troop troopScript = troopNetObj.GetComponent<Troop>();
-                    if (troopScript != null) {
-                        troopScript.Initialize(targetId, ownerId, data, currentBatch);
-                    }
-                }
-            } else {
-                Debug.LogError("[PlayerController] defaultTroopHostPrefab 未赋值！");
-            }
-
-            spawnedCount += currentBatch;
-
-            // Wait for next wave
-            yield return new WaitForSeconds(0.2f);
-        }
     }
 }

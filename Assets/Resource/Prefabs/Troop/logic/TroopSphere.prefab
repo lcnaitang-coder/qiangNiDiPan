@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 51940654002037045}
   - component: {fileID: 7927254410182055781}
   - component: {fileID: 2260307373151569807}
+  - component: {fileID: -2505082883224502321}
   m_Layer: 0
   m_Name: TroopSphere
   m_TagString: Untagged
@@ -139,8 +140,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 252ca13bbd0ff8d4f82374049c7fefd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  netPosition:
+    m_InternalValue: {x: 0, y: 0, z: 0}
+  netOwnerId:
+    m_InternalValue: 0
   netTroopCount:
     m_InternalValue: 1
   troopTypeId:
     m_InternalValue: -1
+--- !u!114 &-2505082883224502321
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 210003923489840192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 360ce8ef044d5b5429440b598293594b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
   clusterRadius: 0.5

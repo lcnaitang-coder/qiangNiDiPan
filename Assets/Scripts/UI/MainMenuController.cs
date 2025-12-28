@@ -18,7 +18,13 @@ public class MainMenuController : MonoBehaviour {
     private VisualElement _versusContainer;
     
     // Inputs
-    private TextField _ipInput;
+    private TextField _lobbyIdInput;
+    
+    // UI Elements for dynamic update
+    private Button _btnCreate;
+    private Button _btnJoin;
+    private Button _btnInvite;
+    private Label _tipLabel;
 
     private void OnEnable() {
         _uiDocument = GetComponent<UIDocument>();
@@ -61,7 +67,7 @@ public class MainMenuController : MonoBehaviour {
         Button btnAdventure = CreateButton("Adventure Mode", OnAdventureClicked);
         _mainMenuContainer.Add(btnAdventure);
 
-        Button btnVersus = CreateButton("Versus Mode", OnVersusClicked);
+        Button btnVersus = CreateButton("Versus Mode (Steam P2P)", OnVersusClicked);
         _mainMenuContainer.Add(btnVersus);
 
         Button btnSettings = CreateButton("Settings", OnSettingsClicked);
@@ -94,17 +100,30 @@ public class MainMenuController : MonoBehaviour {
         title.style.marginBottom = 20;
         _versusContainer.Add(title);
 
-        _ipInput = new TextField("IP Address");
-        _ipInput.value = "127.0.0.1";
-        _ipInput.style.color = Color.white;
-        _ipInput.style.marginBottom = 10;
-        _versusContainer.Add(_ipInput);
+        // IP Input removed for Steam P2P
+        _tipLabel = new Label("Invite friends via Steam Overlay");
+        _tipLabel.style.color = Color.gray;
+        _tipLabel.style.fontSize = 12;
+        _tipLabel.style.marginBottom = 10;
+        _tipLabel.style.alignSelf = Align.Center;
+        _versusContainer.Add(_tipLabel);
 
-        Button btnCreate = CreateButton("Create Room (Host)", OnCreateRoomClicked);
-        _versusContainer.Add(btnCreate);
+        // Lobby ID Input
+        _lobbyIdInput = new TextField();
+        _lobbyIdInput.label = "Lobby ID"; // 设置标签
+        _lobbyIdInput.value = ""; // 默认空
+        _lobbyIdInput.style.marginBottom = 5;
+        _versusContainer.Add(_lobbyIdInput);
 
-        Button btnJoin = CreateButton("Join Room (Client)", OnJoinRoomClicked);
-        _versusContainer.Add(btnJoin);
+        // Init Buttons
+        _btnJoin = CreateButton("Join by ID", OnJoinByIdClicked);
+        _versusContainer.Add(_btnJoin);
+
+        _btnCreate = CreateButton("Create Steam Lobby", OnCreateRoomClicked);
+        _versusContainer.Add(_btnCreate);
+
+        _btnInvite = CreateButton("Open Friends List", OnInviteClicked);
+        _versusContainer.Add(_btnInvite);
 
         Button btnBack = CreateButton("Back", OnBackClicked);
         btnBack.style.marginTop = 20;
@@ -132,6 +151,46 @@ public class MainMenuController : MonoBehaviour {
     private void ShowVersusMenu() {
         _mainMenuContainer.style.display = DisplayStyle.None;
         _versusContainer.style.display = DisplayStyle.Flex;
+
+        UpdateVersusUIState();
+    }
+
+    private void UpdateVersusUIState() {
+        if (_tipLabel == null || _btnCreate == null || _btnJoin == null || _btnInvite == null || _lobbyIdInput == null) {
+            return;
+        }
+
+        bool isUnityTransport = false;
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.NetworkConfig != null) {
+             var transport = NetworkManager.Singleton.NetworkConfig.NetworkTransport;
+             if (transport is Unity.Netcode.Transports.UTP.UnityTransport) {
+                 isUnityTransport = true;
+             }
+        }
+
+        if (isUnityTransport) {
+            // --- Local Dev Mode (UnityTransport) ---
+            _tipLabel.text = "Local Dev Mode (UnityTransport)";
+            
+            // Host Button
+            _btnCreate.text = "Start Local Host";
+            
+            // Client Button
+            _btnJoin.text = "Join Localhost (127.0.0.1)";
+            
+            // Hide unrelated elements
+            _lobbyIdInput.style.display = DisplayStyle.None;
+            _btnInvite.style.display = DisplayStyle.None;
+        } else {
+            // --- Steam P2P Mode ---
+            _tipLabel.text = "Invite friends via Steam Overlay";
+            
+            _btnCreate.text = "Create Steam Lobby";
+            _btnJoin.text = "Join by ID";
+            
+            _lobbyIdInput.style.display = DisplayStyle.Flex;
+            _btnInvite.style.display = DisplayStyle.Flex;
+        }
     }
 
     private void OnAdventureClicked() {
@@ -154,29 +213,53 @@ public class MainMenuController : MonoBehaviour {
     }
 
     private void OnCreateRoomClicked() {
-        Debug.Log("[MainMenu] Creating Room (Host)...");
-        bool success = NetworkManager.Singleton.StartHost();
-        if (success) {
+        if (IsUnityTransport()) {
+            Debug.Log("[MainMenu] Starting Local Host...");
+            NetworkManager.Singleton.StartHost();
             NetworkManager.Singleton.SceneManager.LoadScene("LobbyScene", UnityEngine.SceneManagement.LoadSceneMode.Single);
+            return;
+        }
+
+        Debug.Log("[MainMenu] Creating Steam Lobby...");
+        if (SteamLobbyManager.Singleton != null) {
+            SteamLobbyManager.Singleton.CreateLobby();
         } else {
-            Debug.LogError("Failed to start Host!");
+            Debug.LogError("SteamLobbyManager is missing!");
         }
     }
 
-    private void OnJoinRoomClicked() {
-        string ip = _ipInput.value;
-        if (string.IsNullOrEmpty(ip)) ip = "127.0.0.1";
+    private void OnInviteClicked() {
+        Debug.Log("[MainMenu] Opening Friends Overlay...");
+        if (SteamLobbyManager.Singleton != null) {
+            SteamLobbyManager.Singleton.OpenInviteOverlay();
+        }
+    }
 
-        Debug.Log($"[MainMenu] Joining Room at {ip}...");
-        var transport = NetworkManager.Singleton.GetComponent<Unity.Netcode.Transports.UTP.UnityTransport>();
-        if (transport != null) {
-            transport.ConnectionData.Address = ip;
+    private void OnJoinByIdClicked() {
+        if (IsUnityTransport()) {
+             Debug.Log("[MainMenu] Joining Localhost...");
+             NetworkManager.Singleton.StartClient();
+             return;
         }
 
-        bool success = NetworkManager.Singleton.StartClient();
-        if (!success) {
-            Debug.LogError("Failed to start Client!");
+        string id = _lobbyIdInput.value;
+        if (string.IsNullOrEmpty(id)) {
+            Debug.LogWarning("[MainMenu] Lobby ID is empty.");
+            return;
         }
+        
+        Debug.Log($"[MainMenu] Joining Lobby ID: {id}");
+        if (SteamLobbyManager.Singleton != null) {
+            SteamLobbyManager.Singleton.JoinLobbyByID(id);
+        }
+    }
+
+    private bool IsUnityTransport() {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.NetworkConfig != null) {
+             var transport = NetworkManager.Singleton.NetworkConfig.NetworkTransport;
+             return transport is Unity.Netcode.Transports.UTP.UnityTransport;
+        }
+        return false;
     }
 
     private void OnBackClicked() {

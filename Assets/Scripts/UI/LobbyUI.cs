@@ -104,9 +104,16 @@ public class LobbyUI : MonoBehaviour {
 
     private void UpdateRoomInfo() {
         if (NetworkManager.Singleton != null && _roomInfoLabel != null) {
-            var transport = NetworkManager.Singleton.GetComponent<Unity.Netcode.Transports.UTP.UnityTransport>();
-            string ip = transport != null ? transport.ConnectionData.Address : "Unknown";
-            _roomInfoLabel.text = $"Room IP: {ip}";
+            string info = "Unknown";
+            if (SteamLobbyManager.Singleton != null && SteamLobbyManager.Singleton.CurrentLobbyID.Value != 0) {
+                info = $"Steam Lobby ID: {SteamLobbyManager.Singleton.CurrentLobbyID}";
+            } else {
+                 var transport = NetworkManager.Singleton.GetComponent<Unity.Netcode.Transports.UTP.UnityTransport>();
+                 if (transport != null) {
+                     info = $"IP: {transport.ConnectionData.Address}";
+                 }
+            }
+            _roomInfoLabel.text = info;
         }
     }
 
