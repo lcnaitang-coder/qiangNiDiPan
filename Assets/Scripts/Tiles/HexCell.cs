@@ -1,46 +1,98 @@
 using UnityEngine;
+using Unity.Netcode; // 保留引用以防万一，但主要转为 MonoBehaviour
 
 public class HexCell : MonoBehaviour
 {
+    public enum HexCellType { Empty, Path, Building, Obstacle }
+
     [Header("Debug Info")]
-    public Vector2Int coordinates; // 网格坐标 (x, z)
-    public bool isPath = false;    // 状态：是路还是草
+    public Vector2Int coordinates; // 网格坐标 (x, z) - 本地缓存
+    public bool isPath = false;    // 状态：是路还是草 - 本地缓存
+    
+    [Header("Cell State")]
+    public HexCellType cellType = HexCellType.Empty;
+    public Building currentBuilding { get; private set; }
 
     private HexGridManager _grid;
 
     /// <summary>
-    /// 初始化设置
+    /// 初始化设置 (由 HexGridManager 调用)
     /// </summary>
     public void Setup(HexGridManager grid, int x, int z) {
         _grid = grid;
         coordinates = new Vector2Int(x, z);
+        name = $"Cell {coordinates.x},{coordinates.y}";
+        
+        // 注册到 Grid (本地)
+        if (_grid != null) {
+            _grid.RegisterCell(coordinates, this);
+        }
+    }
+
+    private void RefreshStateAndVisuals() {
+        // 更新 CellType
+        if (isPath) {
+            cellType = HexCellType.Path;
+        } else if (cellType == HexCellType.Path) {
+            // 只有当之前是 Path 现在不是 Path 时，才重置为 Empty
+            // 如果之前是 Building，不要覆盖
+            cellType = HexCellType.Empty;
+        }
+        
+        UpdateVisuals();
+        
+        // 通知邻居
+        if (_grid != null) {
+            foreach(var neighbor in _grid.GetNeighbors(coordinates)) {
+                if (neighbor != null) neighbor.UpdateVisuals();
+            }
+        }
     }
 
     /// <summary>
-    /// 修改路径状态 (供外部调用)
+    /// 修改路径状态 (供 HexGridManager 或 Editor 调用)
     /// </summary>
     public void SetPathState(bool isPathState) {
-        // 即便是相同状态，我们也可能需要强制刷新（比如邻居变了导致我也要变）
-        // 所以这里去掉了 if (this.isPath == isPathState) return; 
-        // 但为了性能，只有在值真正改变或者显式要求刷新时才做操作。
-        // 不过在路径生成时，我们通常只调用一次。
+        if (isPath != isPathState) {
+            isPath = isPathState;
+            RefreshStateAndVisuals();
+        }
+    }
+
+    /// <summary>
+    /// 绑定建筑到该格子
+    /// </summary>
+    public void AssignBuilding(Building building) {
+        currentBuilding = building;
+        cellType = HexCellType.Building;
         
-        // 如果状态确实变了，才设置，否则只是刷新视觉
-        bool changed = (this.isPath != isPathState);
-        this.isPath = isPathState;
+        // 关键修复：当放置建筑时，通知周围邻居更新视觉
+        // 因为邻居的路径可能需要连接到这个新建筑
+        if (_grid != null) {
+            foreach(var neighbor in _grid.GetNeighbors(coordinates)) {
+                if (neighbor != null) {
+                    neighbor.UpdateVisuals();
+                }
+            }
+        }
+    }
 
-        // Safety check
-        if (_grid == null) return;
+    /// <summary>
+    /// 清除该格子的建筑引用
+    /// </summary>
+    public void ClearBuilding() {
+        currentBuilding = null;
+        // 恢复状态：如果是路就是路，否则是空
+        // 注意：这里必须小心，不要把 Pre-marking 冲掉了。
+        // 但通常 ClearBuilding 发生在建筑被销毁时，所以可以重置。
+        cellType = isPath ? HexCellType.Path : HexCellType.Empty;
 
-        // 1. 刷新自己
-        UpdateVisuals();
-
-        // 2. 通知周围所有邻居刷新
-        // 这一步非常关键：因为我变成了路，我的邻居如果也是路，它们的"连接掩码"就会变，模型就需要变
-        foreach(var neighbor in _grid.GetNeighbors(coordinates)) {
-            if (neighbor != null) {
-                // 强制邻居刷新视觉，哪怕它的 isPath 状态没变
-                neighbor.UpdateVisuals();
+        // 移除建筑时，同样通知邻居更新 (断开连接)
+        if (_grid != null) {
+            foreach(var neighbor in _grid.GetNeighbors(coordinates)) {
+                if (neighbor != null) {
+                    neighbor.UpdateVisuals();
+                }
             }
         }
     }
@@ -49,7 +101,13 @@ public class HexCell : MonoBehaviour
     /// 核心逻辑：根据状态和周围环境更新模型
     /// </summary>
     public void UpdateVisuals() {
+        if (!_grid) _grid = HexGridManager.Singleton;
         if (!_grid || !_grid.profile) return;
+
+        bool isOnlineClient = Application.isPlaying
+            && NetworkManager.Singleton != null
+            && NetworkManager.Singleton.IsListening
+            && !NetworkManager.Singleton.IsServer;
 
         // --- 步骤 1: 决定要生成什么 ---
         GameObject prefabToSpawn = null;
@@ -64,8 +122,7 @@ public class HexCell : MonoBehaviour
             } else {
                 // 如果是路但没找到匹配的形状 (比如孤岛)，使用默认路或者报错
                 int canonical = _grid.profile.GetCanonicalMask(mask);
-                Debug.LogWarning($"HexCell {coordinates} (Mask: {mask}, Binary: {System.Convert.ToString(mask, 2)}) - No matching path prefab found! \n" +
-                                 $"Suggested Fix: Add a new Tile Definition in HexTileProfile with Canonical Mask = {canonical}.");
+                // Debug.LogWarning($"HexCell {coordinates} - No matching path prefab found for mask {mask}.");
                 
                 // 优先使用 defaultPathPrefab，如果没有则用 defaultGrassPrefab
                 prefabToSpawn = _grid.profile.defaultPathPrefab != null ? _grid.profile.defaultPathPrefab : _grid.profile.defaultGrassPrefab;
@@ -73,6 +130,8 @@ public class HexCell : MonoBehaviour
         } 
         else {
             // B. 如果是草：直接使用默认草地模型
+            // 注意：即使是 Building 类型，如果还没有建筑模型覆盖(例如还在Pre-marking阶段)，
+            // 地形本身应该显示草地。建筑模型是独立的 GameObject。
             prefabToSpawn = _grid.profile.defaultGrassPrefab;
             rotationY = 0; 
         }
@@ -81,6 +140,9 @@ public class HexCell : MonoBehaviour
         if (prefabToSpawn != null) {
             // 清理旧模型
             foreach (Transform child in transform) {
+                if (isOnlineClient && child.GetComponentInChildren<NetworkObject>(true) != null) {
+                    continue;
+                }
                 Destroy(child.gameObject);
             }
 
@@ -89,8 +151,6 @@ public class HexCell : MonoBehaviour
             // 保持局部位置归零，只旋转
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = Quaternion.Euler(0, rotationY, 0);
-        } else {
-            Debug.LogWarning($"HexCell {coordinates}: No prefab found for state isPath={isPath}. Keeping previous visuals.");
         }
     }
 }

@@ -114,6 +114,10 @@ public class GameFlowManager : NetworkBehaviour {
             
             // 只有服务器负责生成
             if (IsServer) {
+                BattleMapManager mapMgr = BattleMapManager.Singleton != null ? BattleMapManager.Singleton : FindObjectOfType<BattleMapManager>();
+                if (mapMgr != null) {
+                    mapMgr.ServerSetInitialMapIndexIfNeeded();
+                }
                 SpawnRTSPlayers();
                 IsGameStarted.Value = true;
             }

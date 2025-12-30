@@ -32,9 +32,9 @@ public class BuildingUI : MonoBehaviour {
             _targetBuilding.OnOwnerChanged += UpdateOwnerState;
 
             // 3. 立即刷新一次当前状态
-            UpdateCount(_targetBuilding.currentSoldiers.Value);
-            UpdateLevelState(_targetBuilding.currentLevel.Value);
-            UpdateOwnerState(_targetBuilding.ownerId.Value);
+            UpdateCount(_targetBuilding.Soldiers);
+            UpdateLevelState(_targetBuilding.Level);
+            UpdateOwnerState(_targetBuilding.OwnerId);
         }
     }
 
@@ -83,15 +83,20 @@ public class BuildingUI : MonoBehaviour {
     private void UpdateUpgradeButtonState() {
         if (upgradeButtonRoot == null || upgradeButton == null || _targetBuilding == null || _targetBuilding.data == null) return;
 
-        int currentLevel = _targetBuilding.currentLevel.Value;
+        int currentLevel = _targetBuilding.Level;
         int maxLevel = _targetBuilding.data.levels.Count;
-        int currentSoldiers = _targetBuilding.currentSoldiers.Value;
+        int currentSoldiers = _targetBuilding.Soldiers;
         int maxCapacity = _targetBuilding.data.GetMaxCapacity(currentLevel);
 
         // 1. 判断是否显示 (Active)
         // 条件：未满级 且 是自己的建筑
         bool isMaxLevel = currentLevel >= maxLevel;
-        bool isMine = _targetBuilding.ownerId.Value == NetworkManager.Singleton.LocalClientId;
+        
+        ulong localId = (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening) 
+                        ? NetworkManager.Singleton.LocalClientId 
+                        : 99999; // 离线模式下不显示升级按钮
+
+        bool isMine = _targetBuilding.OwnerId == localId;
         bool shouldShow = !isMaxLevel && isMine;
 
         upgradeButtonRoot.SetActive(shouldShow);

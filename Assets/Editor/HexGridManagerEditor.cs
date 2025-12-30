@@ -19,6 +19,11 @@ public class HexGridManagerEditor : Editor
             manager.GenerateGrid();
         }
 
+        if (GUILayout.Button("自动连接所有建筑 (Auto Connect Paths)")) {
+            Undo.RegisterFullObjectHierarchyUndo(manager.gameObject, "Auto Connect Paths");
+            manager.AutoConnectBuildings();
+        }
+
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("数据存取", EditorStyles.boldLabel);
 

@@ -37,8 +37,8 @@ public class BuildingView : MonoBehaviour {
             targetBuilding.OnLevelChanged += UpdateVisualModel; // 监听等级变化
             
             // 初始化视图状态
-            UpdateVisualModel(targetBuilding.currentLevel.Value);
-            UpdateOwnerColor(targetBuilding.ownerId.Value);
+            UpdateVisualModel(targetBuilding.Level);
+            UpdateOwnerColor(targetBuilding.OwnerId);
         }
 
         // 默认隐藏光圈
@@ -179,8 +179,13 @@ public class BuildingView : MonoBehaviour {
     private void UpdateVisualModel(int level) {
         if (modelContainer == null || targetBuilding == null || targetBuilding.data == null) return;
 
+        bool isOnlineClient = Application.isPlaying && Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsListening && Unity.Netcode.NetworkManager.Singleton.IsClient && !Unity.Netcode.NetworkManager.Singleton.IsServer;
+
         // 1. 销毁旧模型
         foreach (Transform child in modelContainer) {
+            if (isOnlineClient && child.GetComponentInChildren<Unity.Netcode.NetworkObject>(true) != null) {
+                continue;
+            }
             Destroy(child.gameObject);
         }
         _currentRenderers.Clear();

@@ -14,10 +14,25 @@ public class HexMapData : ScriptableObject
     [HideInInspector]
     public bool[] pathStates;
 
+    // --- 建筑数据 ---
+    [System.Serializable]
+    public struct BuildingSaveData {
+        public int x;
+        public int z;
+        public string buildingTypeId;
+        public ulong ownerId;
+        public int level;
+        public int soldiers;
+    }
+
+    [HideInInspector]
+    public List<BuildingSaveData> buildings = new List<BuildingSaveData>();
+
     public void Initialize(int w, int h) {
         width = w;
         height = h;
         pathStates = new bool[w * h];
+        buildings.Clear();
     }
 
     public void SetTile(int x, int z, bool isPath) {

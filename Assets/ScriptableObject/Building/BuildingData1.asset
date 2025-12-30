@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63627f83baddd2a4fa4b5fe85c678341, type: 3}
   m_Name: BuildingData1
   m_EditorClassIdentifier: 
+  buildingTypeId: cylinder
+  modelVerticalOffset: 1
   levels:
   - maxCapacity: 10
     productionRate: 1
